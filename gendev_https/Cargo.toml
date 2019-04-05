@@ -1,10 +1,11 @@
 [package]
-name = "gendev_http"
+name = "gendev_https"
 version = "0.1.0"
 authors = ["genuinebyte <bja@genuinebyte.com>"]
 edition = "2018"
 
 [dependencies]
+mio = "0.6.16"
 rustls = "0.15.2"
 webpki = "0.19.1"
 webpki-roots = "0.16.0"
