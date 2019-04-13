@@ -1,89 +1,106 @@
-use mio::event::Events;
+use mio::event::{Event, Events};
 use mio::net::TcpStream;
 use mio::{Poll, PollOpt, Ready, Token};
 use rustls::{ClientConfig, ClientSession, Session};
-use std::io::{Read, Write};
+use std::io::Error as IoError;
+use std::io::Result as IoResult;
+use std::io::{ErrorKind, Read, Write};
+use std::net::SocketAddr;
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use webpki::DNSNameRef;
+//https://github.com/ctz/rustls/blob/master/rustls-mio/examples/tlsclient.rs
 
-fn main() {
-	let CLIENT = Token(0);
-	let mut tcps = get_connection();
+struct TlsClient {
+	socket: TcpStream,
+	client: ClientSession,
+	token: Token,
+}
 
-	let poll = Poll::new().unwrap();
-	poll.register(
-		&tcps,
-		CLIENT,
-		Ready::readable() | Ready::writable(),
-		PollOpt::edge(),
-	)
-	.unwrap();
+impl TlsClient {
+	fn new(
+		tcps: TcpStream,
+		hostname: DNSNameRef,
+		config: &Arc<ClientConfig>,
+		token: Token,
+	) -> Self {
+		TlsClient {
+			socket: tcps,
+			client: ClientSession::new(config, hostname),
+			token,
+		}
+	}
 
-	let mut config = ClientConfig::new();
-	config
-		.root_store
-		.add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
-	let arc_config = Arc::new(config);
-	let genbyte_dev = DNSNameRef::try_from_ascii_str("genbyte.dev").unwrap();
-	let mut client = ClientSession::new(&arc_config, genbyte_dev);
+	fn ready(&mut self, poll: &mut Poll, event: &Event) {
+		if event.token() != self.token {
+			return;
+		}
 
-	client.write(b"GET / HTTP/1.0\r\n\r\n").unwrap();
+		if event.readiness().is_readable() {
+			self.do_read();
+		}
 
-	let mut events = Events::with_capacity(64);
-	let mut wrote_request = false;
-	loop {
-		poll.poll(&mut events, None).unwrap();
+		if event.readiness().is_writable() {
+			self.do_write();
+		}
 
-		for event in events.iter() {
-			match event.token() {
-				CLIENT => {
-					if !wrote_request && event.readiness().is_writable() && client.wants_write() {
-						print!("Trying to write request...");
-						println!("{} bytes", client.write_tls(&mut tcps).unwrap());
-						wrote_request = true;
-					}
+		self.reregister(poll);
+	}
 
-					if event.readiness().is_readable() && client.wants_read() {
-						//read_tls returns non-zero
-						let tls_read_size = client.read_tls(&mut tcps).unwrap();
-						//No isse on process_new_packets
-						client.process_new_packets().unwrap();
+	fn register(&self, poll: &mut Poll) -> IoResult<()> {
+		poll.register(
+			&self.socket,
+			self.token,
+			self.interest(),
+			PollOpt::level() | PollOpt::oneshot(),
+		)
+	}
 
-						let mut plain = Vec::new();
-						//read_to_end returns Ok(0)??
-						let plain_read_size = client.read_to_end(&mut plain).unwrap();
+	fn reregister(&self, poll: &mut Poll) -> IoResult<()> {
+		poll.reregister(
+			&self.socket,
+			self.token,
+			self.interest(),
+			PollOpt::level() | PollOpt::oneshot(),
+		)
+	}
 
-						let ascii = String::from_utf8(plain).unwrap();
-						println!(
-							"Response[{}|{}]:\n{}",
-							tls_read_size, plain_read_size, ascii
-						);
-						return;
-					}
-				}
-			}
+	fn interest(&self) -> Ready {
+		let r = self.client.wants_read();
+		let w = self.client.wants_write();
+
+		if r && w {
+			return Ready::readable() | Ready::writable();
+		} else if w {
+			return Ready::writable();
+		} else {
+			return Ready::readable();
 		}
 	}
 }
 
-fn get_connection() -> TcpStream {
-	let genuine_addrs = "genbyte.dev:443"
-		.to_socket_addrs()
-		.expect("Failed to parse hostname");
+fn lookup(host: &str) -> IoResult<SocketAddr> {
+	let mut addrs = host.to_socket_addrs()?;
 
-	let mut genuine_connection: Option<TcpStream> = None;
-	for addr in genuine_addrs {
-		if let Ok(val) = TcpStream::connect(&addr) {
-			println!("Using address: {}", addr);
-			genuine_connection = Some(val);
-			break;
-		}
-	}
-
-	if let Some(val) = genuine_connection {
-		val
+	if let Some(addr) = addrs.next() {
+		Ok(addr)
 	} else {
-		panic!("Failed to connect to genbyte.dev");
+		Err(IoError::new(ErrorKind::NotFound, "Could not find host"))
 	}
+}
+
+fn main() {
+	let host = "genbyte.dev:443";
+	let host_addr = lookup(host).expect("Couldn't find IP from hostname");
+	let tcps = TcpStream::connect(&host_addr).expect("Couldn't connect to host");
+
+	let mut tls_config = ClientConfig::new();
+	tls_config
+		.root_store
+		.add_server_trust_anchors(&webpki_roots::TLS_SERVER_ROOTS);
+	let arc_config = Arc::new(tls_config);
+
+	let dns_ref = DNSNameRef::try_from_ascii_str(host).expect("Couldn't construct DNS ref");
+
+	let tlsc = TlsClient::new(tcps, dns_ref, &arc_config);
 }
