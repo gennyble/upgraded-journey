@@ -1,16 +1,16 @@
 # upgraded-memory
 A collection of code snippets and tests on GitHub because I don't know what else to do with them.
 
-#### gendev_http
+#### gendev_http [Rust]
 My first time working with Rust [TcpStream][std_tcpstream]. Makes a GET request to
 [my website](genbyte.dev).
 
-#### gendev_https
+#### gendev_https [Rust]
 Trying to get find the minimum amount of code that will fetch [my website's homepage](genbyte.dev).
 [rustls][rustls_repo] and [mio][mio_repo] are difficult separately so together... it's a struggle.
 This repository is a modification of the [TlsClient][rustls_tlsclient] example in the rustls repo.
 
-#### gendev_https_blocking
+#### gendev_https_blocking [Rust]
 An example of using rustls with blocking std::TcpStream sockets. I thought this was impossible but
 [ctz][ctz] later found my [Twitter thread][rustls_twt_thread] where I struggled and called out
 for help in a desperate attempt to get it working. He fixed it up and sent a [PR][pr_1]. Thank you. 
