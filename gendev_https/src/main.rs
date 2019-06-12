@@ -164,9 +164,9 @@ fn lookup(host: &str) -> IoResult<SocketAddr> {
 }
 
 fn main() {
-	let host = "genbyte.dev:443";
 	let host_no_port = "genbyte.dev";
-	let host_addr = lookup(host).expect("Couldn't find IP from hostname");
+	let host = format!("{}:443", host_no_port);
+	let host_addr = lookup(&host).expect("Couldn't find IP from hostname");
 	let tcps = TcpStream::connect(&host_addr).expect("Couldn't connect to host");
 
 	let mut tls_config = ClientConfig::new();
