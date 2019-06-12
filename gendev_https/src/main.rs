@@ -94,9 +94,10 @@ impl TlsClient {
 	fn do_write(&mut self) {
 		if !self.request_written {
 			self.request_written = true;
-			self.client.write(b"GET / HTTP/1.0\r\n\r\n").unwrap();
-			self.client.write_tls(&mut self.socket).unwrap();
+			let write = self.client.write(b"GET / HTTP/1.0\r\n\r\n").unwrap();
+			let write_tls = self.client.write_tls(&mut self.socket).unwrap();
 			println!("[do_write:99] Request written");
+			println!("{} bytes were written before encryption, {} after", write, write_tls);
 		}
 	}
 
