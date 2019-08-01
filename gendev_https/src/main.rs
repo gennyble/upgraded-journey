@@ -97,7 +97,10 @@ impl TlsClient {
 			let write = self.client.write(b"GET / HTTP/1.0\r\n\r\n").unwrap();
 			let write_tls = self.client.write_tls(&mut self.socket).unwrap();
 			println!("[do_write:99] Request written");
-			println!("{} bytes were written before encryption, {} after", write, write_tls);
+			println!(
+				"{} bytes were written before encryption, {} after",
+				write, write_tls
+			);
 		}
 	}
 
@@ -113,12 +116,15 @@ impl TlsClient {
 			return;
 		}
 
+		let read_count = read_res.unwrap();
+
 		// If ready but no data: EOF
-		if read_res.unwrap() == 0 {
+		if read_count == 0 {
 			println!("No data available, must be EoF...");
 			self.closing = true;
 			return;
 		}
+		println!("{} encrypted bytes have been read", read_count);
 
 		// Reading TLS data might have caused errors. These are malformed TLS
 		// and are fatal.
