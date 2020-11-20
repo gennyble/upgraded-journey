@@ -40,7 +40,7 @@ We see [`Resoruces::thread_local_data`][1] using a trait called [`ResourceStorag
 an implementation of [`Downcast`][3].
 
 `Resources::thread_local_data` is a `HashMap<TypeId, Box<dyn ResourceStorage>>`. You insert
-resoruces by calling methods that ultimately call [`Resources::insert_resource<T: Resource>(T)`][4].
+resources by calling methods that ultimately call [`Resources::insert_resource<T: Resource>(T)`][4].
 That's not the correct function signature, but it gives all the requries information.
 [`Resource`][5] is a trait without any functions or types of its own, it just requires that `Send`,
 `Sync`, and `'static` are there.
