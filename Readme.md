@@ -15,6 +15,10 @@ An example of using rustls with blocking std::TcpStream sockets. I thought this 
 [ctz][ctz] later found my [Twitter thread][rustls_twt_thread] where I struggled and called out
 for help in a desperate attempt to get it working. He fixed it up and sent a [PR][pr_1]. Thank you. 
 
+#### typeid [Rust]
+Trying to figure out how the heck [bevy][bevy-src] and [futures][futures-src] do their cool thing
+with types.
+
 [ctz]: https://github.com/ctz
 [mio_repo]: https://github.com/carllerche/mio
 [pr_1]: https://github.com/genuinebyte/upgraded-journey/pull/1
@@ -22,3 +26,5 @@ for help in a desperate attempt to get it working. He fixed it up and sent a [PR
 [rustls_twt_thread]: https://twitter.com/genuinebyte/status/1113300356484747264
 [rustls_tlsclient]: https://github.com/ctz/rustls/blob/master/rustls-mio/examples/tlsclient.rs
 [std_tcpstream]: https://doc.rust-lang.org/std/net/struct.TcpStream.html
+[bevy-src]: https://github.com/bevyengine
+[futures-src]: https://github.com/rust-lang/futures-rs
