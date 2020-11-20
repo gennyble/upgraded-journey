@@ -19,6 +19,9 @@ for help in a desperate attempt to get it working. He fixed it up and sent a [PR
 Trying to figure out how the heck [bevy][bevy-src] and [futures][futures-src] do their cool thing
 with types.
 
+Got it with 1 paramter but multiple without a tuple looks ahh. [This][bevy-systemparam] code from
+bevy might do to help.
+
 [ctz]: https://github.com/ctz
 [mio_repo]: https://github.com/carllerche/mio
 [pr_1]: https://github.com/genuinebyte/upgraded-journey/pull/1
@@ -28,3 +31,4 @@ with types.
 [std_tcpstream]: https://doc.rust-lang.org/std/net/struct.TcpStream.html
 [bevy-src]: https://github.com/bevyengine
 [futures-src]: https://github.com/rust-lang/futures-rs
+[bevy-systemparam]: https://github.com/bevyengine/bevy/blob/7628f4a64e6f3eacfc4aad3bb6b3d54309722682/crates/bevy_ecs/src/system/system_param.rs

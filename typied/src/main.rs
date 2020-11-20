@@ -59,9 +59,12 @@ fn main() {
         name: "AX-13-AB".into(),
         size: 7
     });
+    storage.add((23f32, 73f32));
+    storage.add((62f32, 18f32));
 
     storage.run_fn(&thing_doer);
     storage.run_fn(&str_doer);
+    storage.run_fn(&tuplef32f32_doer);
 }
 
 fn thing_doer(thing: &Thing) {
@@ -70,4 +73,8 @@ fn thing_doer(thing: &Thing) {
 
 fn str_doer(s: &&str) {
     println!("I found a &str! It says '{}'", s);
+}
+
+fn tuplef32f32_doer(tuple: &(f32, f32)) {
+    println!("I found a tuple! ({}, {})", tuple.0, tuple.1);
 }
