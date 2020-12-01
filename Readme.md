@@ -22,6 +22,11 @@ with types.
 Got it with 1 paramter but multiple without a tuple looks ahh. [This][bevy-systemparam] code from
 bevy might do to help.
 
+#### lyingstatic [Rust]
+The source for [this tweet][lyingstatic-tweet]
+
+[lyingstatic-tweet]: https://twitter.com/genuinebyte/status/1329947987448123397?s=20
+
 [ctz]: https://github.com/ctz
 [mio_repo]: https://github.com/carllerche/mio
 [pr_1]: https://github.com/genuinebyte/upgraded-journey/pull/1
