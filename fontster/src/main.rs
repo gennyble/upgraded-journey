@@ -79,45 +79,51 @@ impl Image {
 }
 
 fn main() {
-    let mut img1 = Image::new(64, 64);
-
-    let img2_data: Vec<u8> = vec![0; 32 * 32]
-        .into_iter()
-        .map(|x: u8| 255u8)
-        .collect::<Vec<u8>>();
-
-    let img2 = Image::from_parts(32, 32, img2_data);
-
-    img1.draw_img(img2, 16, 16);
-
-    /*let data = fs::read("AmandaFuckingSans.otf").expect("Failed to load font from file");
+    let data = fs::read("AmandaFuckingSans.otf").expect("Failed to load font from file");
     let font = Font::from_bytes(data, Default::default()).expect("Failed to parse font");
 
-    let px = 16.0;
+    let px = 64.0;
 
     // An 'em' referes to the width of M historically, as it was usually the
     // widest character (and took up all the available horizontal space)
     let em = font.metrics('M', px).bounds.width;
 
-    let vert_metric = font.vertical_line_metrics(px).expect("Is this not a horizontal font?");
+    let line_metrics = font.horizontal_line_metrics(px).expect("Is this not a vertical font?");
     // This should the largest height a glpyh can have. ascent is positive (above baseline)
     // and descent is negative (below baseline).
-    let max_height = vert_metric.ascent - vert_metric.descent;
+    let max_height = line_metrics.ascent - line_metrics.descent;
 
     // Width/height, in characters, of the image
-    let char_width = 16.0;
-    let char_height = 8.0;
+    let char_width = 16;
+    let char_height = 8;
 
-    let img = Image::new((char_width * em) as u16, (char_height * max_height) as u16);*/
+    let mut img = Image::new((char_width as f32 * em) as usize, (char_height as f32 * max_height) as usize);
+
+    //            ASCII
+    for index in 0..128u8 {
+        let char_x = index % char_width;
+        let char_y = index / char_width;
+
+        let x = char_x as f32 * em;
+        let y = char_y as f32 * em;
+
+        let (metrics, bitmap) = font.rasterize(index as char, px);
+
+        img.draw_img(
+            Image::from_parts(metrics.width, metrics.height, bitmap),
+            x as usize,
+            y as usize
+        );
+    }
 
     let png_file = fs::File::create("raster.png").expect("Failed to create raster image file");
-    let width = img1.width() as u32;
-    let height = img1.height() as u32;
+    let width = img.width() as u32;
+    let height = img.height() as u32;
 
     let mut png = Encoder::new(png_file, width, height);
     png.set_color(ColorType::Grayscale);
     png.set_depth(BitDepth::Eight);
 
     let mut writer = png.write_header().expect("Failed to write PNG header");
-    writer.write_image_data(img1.data()).expect("Failed to write PNG data");
+    writer.write_image_data(img.data()).expect("Failed to write PNG data");
 }
