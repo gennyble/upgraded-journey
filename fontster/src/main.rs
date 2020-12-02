@@ -2,6 +2,12 @@ use fontdue::Font;
 use png::{BitDepth, ColorType, Encoder};
 use std::fs;
 
+#[derive(Debug, PartialEq)]
+enum Colors {
+    RGB,
+    Grey
+}
+
 struct Image {
     width: usize,
     height: usize,
@@ -10,7 +16,7 @@ struct Image {
 
 impl Image {
     fn new(width: usize, height: usize) -> Self {
-        let data = vec![0; width * height];
+        let data = vec![0; width * height * 3];
 
         Self {
             width,
@@ -19,9 +25,23 @@ impl Image {
         }
     }
 
-    fn from_parts(width: usize, height: usize, data: Vec<u8>) -> Self {
-        if data.len() != width * height {
-            panic!("Expected length to be {} but it's {}", width*height, data.len());
+    fn from_buffer(width: usize, height: usize, mut data: Vec<u8>, colors: Colors) -> Self {
+        let expected_len = match colors {
+            Colors::Grey => width * height,
+            Colors::RGB => width * height * 3
+        };
+
+        if data.len() != expected_len {
+            panic!("Expected length to be {} but it's {}", expected_len, data.len());
+        }
+
+        if colors == Colors::Grey {
+            // Not the fastest, but it'll do.
+            let mut colordata = Vec::with_capacity(width * height * 3);
+            for byte in data.into_iter() {
+                colordata.extend_from_slice(&[byte, byte, byte]);
+            }
+            data = colordata;
         }
 
         Self {
@@ -47,6 +67,10 @@ impl Image {
         self.data
     }
 
+    fn xy_to_index(&self, x: usize, y: usize) -> usize {
+        (y as usize * self.width + x) * 3
+    }
+
     fn draw_img(&mut self, img: Image, off_x: isize, off_y: isize) {
         let img_data = img.data();
         for img_y in 0..(img.height() as isize) {
@@ -70,12 +94,36 @@ impl Image {
                 } if x >= self.width as isize{
                     break;
                 } else {
-                    let img_index = img_y as usize * img.width() + img_x as usize;
-                    let our_index = y as usize * self.width() + x as usize;
+                    let img_index = img.xy_to_index(img_x as usize, img_y as usize);
+                    let our_index = self.xy_to_index(x as usize, y as usize);
 
                     self.data[our_index] = img_data[img_index];
+                    self.data[our_index+1] = img_data[img_index+1];
+                    self.data[our_index+2] = img_data[img_index+2];
                 }
             }
+        }
+    }
+
+    fn horizontal_line(&mut self, x: usize, y: usize, len: usize, color: (u8, u8, u8)) {
+        for i in 0..len {
+            // TODO: Check x and y are valid coordiantes
+            let index = self.xy_to_index(x + i, y);
+
+            self.data[index] = color.0;
+            self.data[index+1] = color.1;
+            self.data[index+2] = color.2;
+        }
+    }
+
+    fn vertical_line(&mut self, x: usize, y: usize, len: usize, color: (u8, u8, u8)) {
+        for i in 0..len {
+            // TODO: Check x and y are valid coordiantes
+            let index = self.xy_to_index(x, y + i);
+
+            self.data[index] = color.0;
+            self.data[index+1] = color.1;
+            self.data[index+2] = color.2;
         }
     }
 }
@@ -133,7 +181,7 @@ fn main() {
         let (metrics, bitmap) = font.rasterize(index as char, px);
 
         img.draw_img(
-            Image::from_parts(metrics.width, metrics.height, bitmap),
+            Image::from_buffer(metrics.width, metrics.height, bitmap, Colors::Grey),
             x as isize,
             y as isize
         );
@@ -146,7 +194,7 @@ fn main() {
     let height = img.height() as u32;
 
     let mut png = Encoder::new(png_file, width, height);
-    png.set_color(ColorType::Grayscale);
+    png.set_color(ColorType::RGB);
     png.set_depth(BitDepth::Eight);
 
     let mut writer = png.write_header().expect("Failed to write PNG header");
@@ -155,10 +203,12 @@ fn main() {
     println!();
     do_sentence(&font, "EHLO, q256!", "ehloq256.png");
     do_sentence(&font, "Hello, World!", "hello_world.png");
+    do_sentence(&font, "@Genuinebyte", "genuinebyte.png");
 }
 
 fn do_sentence(font: &Font, sentence: &str, fname: &str) {
-    let px = 32.0;
+    let px = 128.0;
+    let border_width = px as usize/4;
 
     let mut width = 0;
     let mut height = 0;
@@ -178,15 +228,15 @@ fn do_sentence(font: &Font, sentence: &str, fname: &str) {
             let above_baseline = metrics.height - metrics.ymin.abs() as usize;
             let below_baseline = metrics.ymin.abs() as usize;
 
-            if height < above_baseline {
-                height = above_baseline;
-            }
-
             if baseline_bottom_offset < below_baseline {
                 // Add the difference in baselines
                 height += below_baseline - baseline_bottom_offset;
                 // Set the new baseline
                 baseline_bottom_offset = below_baseline
+            }
+
+            if (height - baseline_bottom_offset) < above_baseline {
+                height = above_baseline + baseline_bottom_offset;
             }
         }
 
@@ -196,19 +246,32 @@ fn do_sentence(font: &Font, sentence: &str, fname: &str) {
         println!("\twidth: {}", metrics.width);
         println!("\theight: {}", metrics.height);
         println!("\tadvance_width: {}", metrics.advance_width);
+        println!("\t\tCurrent height: {}", height);
+        println!("\t\tCurrent baseline offset: {}", baseline_bottom_offset);
     }
 
     println!("Sentence is {}x{} with a baseline offset of {}", width, height, baseline_bottom_offset);
 
+    let img_width = width + (border_width * 2);
+    let img_height = height + (border_width * 2);
+
+    let mut img = Image::new(img_width, img_height);
+    img.horizontal_line(border_width, border_width + (height - baseline_bottom_offset), width, (255, 0, 0));
+
+    img.horizontal_line(border_width-1, border_width-1, width+2, (0,0,255));
+    img.horizontal_line(border_width-1, border_width+height+1, width+2, (0,0,255));
+
+    img.vertical_line(border_width-1, border_width-1, height+2, (0,0,255));
+    img.vertical_line(border_width+width+1, border_width-1, height+2, (0,0,255));
+
     let mut x_offset = 0.0;
-    let mut img = Image::new(width, height);
     for ch in sentence.chars() {
         let (metrics, bitmap) = font.rasterize(ch, px);
 
         img.draw_img(
-            Image::from_parts(metrics.width, metrics.height, bitmap),
-            metrics.xmin as isize + x_offset as isize,
-            (height as isize - metrics.height as isize) - baseline_bottom_offset as isize
+            Image::from_buffer(metrics.width, metrics.height, bitmap, Colors::Grey),
+            border_width as isize + metrics.xmin as isize + x_offset as isize,
+            border_width as isize + (height as isize - metrics.height as isize) + (metrics.ymin as isize * -1) - baseline_bottom_offset as isize
         );
 
         x_offset += metrics.advance_width;
@@ -217,7 +280,7 @@ fn do_sentence(font: &Font, sentence: &str, fname: &str) {
     let png_file = fs::File::create(fname).expect("Failed to create sentence image file");
 
     let mut png = Encoder::new(png_file, img.width() as u32, img.height() as u32);
-    png.set_color(ColorType::Grayscale);
+    png.set_color(ColorType::RGB);
     png.set_depth(BitDepth::Eight);
 
     let mut writer = png.write_header().expect("Failed to write PNG header");
