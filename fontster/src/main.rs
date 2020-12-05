@@ -63,15 +63,11 @@ impl Image {
         &self.data
     }
 
-    fn as_vec(self) -> Vec<u8> {
-        self.data
-    }
-
     fn xy_to_index(&self, x: usize, y: usize) -> usize {
         (y as usize * self.width + x) * 3
     }
 
-    fn draw_img(&mut self, img: Image, off_x: isize, off_y: isize) {
+    fn draw_img(&mut self, img: Image, off_x: isize, off_y: isize, ignore_black: bool) {
         let img_data = img.data();
         for img_y in 0..(img.height() as isize) {
             // current pixel y value
@@ -96,6 +92,10 @@ impl Image {
                 } else {
                     let img_index = img.xy_to_index(img_x as usize, img_y as usize);
                     let our_index = self.xy_to_index(x as usize, y as usize);
+
+                    if ignore_black && img_data[img_index] == 0 && img_data[img_index+1] == 0 && img_data[img_index] == 0 {
+                        continue;
+                    }
 
                     self.data[our_index] = img_data[img_index];
                     self.data[our_index+1] = img_data[img_index+1];
@@ -125,6 +125,13 @@ impl Image {
             self.data[index+1] = color.1;
             self.data[index+2] = color.2;
         }
+    }
+
+    fn rect(&mut self, x1: usize, y1: usize, width: usize, height: usize, color: (u8, u8, u8)) {
+        self.vertical_line(x1, y1, height, color); //Right
+        self.horizontal_line(x1, y1, width, color); //Top
+        self.vertical_line(x1 + width, y1, height, color); //Left
+        self.horizontal_line(x1, y1 + height, width, color); //Bottom
     }
 }
 
@@ -183,7 +190,8 @@ fn main() {
         img.draw_img(
             Image::from_buffer(metrics.width, metrics.height, bitmap, Colors::Grey),
             x as isize,
-            y as isize
+            y as isize,
+            true
         );
     }
 
@@ -206,17 +214,21 @@ fn main() {
     do_sentence(&font, "@Genuinebyte", "genuinebyte.png");
 }
 
-fn do_sentence(font: &Font, sentence: &str, fname: &str) {
-    let px = 128.0;
-    let border_width = px as usize/4;
+struct Layout {
+    pub glyphs: Vec<(isize, isize, usize, usize, Vec<u8>)>,
+    pub width: usize,
+    pub height: usize,
+    pub baseline_offset: usize
+}
 
-    let mut width = 0;
+fn get_layout(font: &Font, size_px: f32, sentence: &str) -> Layout {
+    let mut width = 0.0;
     let mut height = 0;
     let mut baseline_bottom_offset = 0;
 
     for ch in sentence.chars() {
-        let metrics = font.metrics(ch, px);
-        width += metrics.advance_width as usize;
+        let metrics = font.metrics(ch, size_px);
+        width += metrics.advance_width;
         
         if metrics.ymin >= 0 {
             let needed_height = metrics.height + metrics.ymin as usize;
@@ -239,42 +251,60 @@ fn do_sentence(font: &Font, sentence: &str, fname: &str) {
                 height = above_baseline + baseline_bottom_offset;
             }
         }
-
-        println!("Character '{}'", ch);
-        println!("\txmin: {}", metrics.xmin);
-        println!("\tymin: {}", metrics.ymin);
-        println!("\twidth: {}", metrics.width);
-        println!("\theight: {}", metrics.height);
-        println!("\tadvance_width: {}", metrics.advance_width);
-        println!("\t\tCurrent height: {}", height);
-        println!("\t\tCurrent baseline offset: {}", baseline_bottom_offset);
     }
 
-    println!("Sentence is {}x{} with a baseline offset of {}", width, height, baseline_bottom_offset);
-
-    let img_width = width + (border_width * 2);
-    let img_height = height + (border_width * 2);
-
-    let mut img = Image::new(img_width, img_height);
-    img.horizontal_line(border_width, border_width + (height - baseline_bottom_offset), width, (255, 0, 0));
-
-    img.horizontal_line(border_width-1, border_width-1, width+2, (0,0,255));
-    img.horizontal_line(border_width-1, border_width+height+1, width+2, (0,0,255));
-
-    img.vertical_line(border_width-1, border_width-1, height+2, (0,0,255));
-    img.vertical_line(border_width+width+1, border_width-1, height+2, (0,0,255));
-
+    let mut glyphs = Vec::with_capacity(sentence.len());
     let mut x_offset = 0.0;
     for ch in sentence.chars() {
-        let (metrics, bitmap) = font.rasterize(ch, px);
+        let (metrics, raster) = font.rasterize(ch, size_px);
 
-        img.draw_img(
-            Image::from_buffer(metrics.width, metrics.height, bitmap, Colors::Grey),
-            border_width as isize + metrics.xmin as isize + x_offset as isize,
-            border_width as isize + (height as isize - metrics.height as isize) + (metrics.ymin as isize * -1) - baseline_bottom_offset as isize
+        glyphs.push(
+            (
+            metrics.xmin as isize + x_offset as isize,
+            (height as isize - metrics.height as isize) + (metrics.ymin as isize * -1) - baseline_bottom_offset as isize,
+            metrics.width,
+            metrics.height,
+            raster
+            )
         );
 
         x_offset += metrics.advance_width;
+    }
+
+    Layout {
+        glyphs,
+        width: width as usize, // Cast to usize now to avod compounding truncationd
+        height,
+        baseline_offset: baseline_bottom_offset
+    }
+}
+
+fn do_sentence(font: &Font, sentence: &str, fname: &str) {
+    let px = 128.0;
+    let border_width = px as usize/4;
+    let layout = get_layout(font, px, sentence);
+
+    let img_width = layout.width + (border_width * 2);
+    let img_height = layout.height + (border_width * 2);
+
+    let mut img = Image::new(img_width, img_height);
+
+    // Draw the baseline
+    img.horizontal_line(border_width, border_width + (layout.height - layout.baseline_offset), layout.width, (255, 0, 0));
+    // Draw bounding box
+    img.rect(border_width-1, border_width-1, layout.width + 2, layout.height + 2, (0, 0, 255));
+
+    for (mut x, mut y, width, height, raster) in layout.glyphs {
+        x += border_width as isize;
+        y += border_width as isize;
+
+        img.draw_img(
+            Image::from_buffer(width, height, raster, Colors::Grey),
+            x,
+            y,
+            true
+        );
+        img.rect(x as usize, y as usize, width, height, (0, 255, 0));
     }
 
     let png_file = fs::File::create(fname).expect("Failed to create sentence image file");
