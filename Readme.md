@@ -27,6 +27,12 @@ The source for [this tweet][lyingstatic-tweet]
 
 [lyingstatic-tweet]: https://twitter.com/genuinebyte/status/1329947987448123397?s=20
 
+#### fonster [Rust]
+Trying to draw fonts without a layout engine (so I guess writing my own?) and struggling along
+the way. Code is messy, but bloody works! Twitter thread abotu this is [here][fonster-thread].
+
+[fonster-thread]: https://twitter.com/genuinebyte/status/1333960877989629957
+
 [ctz]: https://github.com/ctz
 [mio_repo]: https://github.com/carllerche/mio
 [pr_1]: https://github.com/genuinebyte/upgraded-journey/pull/1
