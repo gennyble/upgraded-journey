@@ -3,16 +3,16 @@ A collection of code snippets and tests on GitHub because I don't know what else
 
 #### gendev_http [Rust]
 My first time working with Rust [TcpStream][std_tcpstream]. Makes a GET request to
-[my website](genbyte.dev).
+[my website](nyble.dev).
 
 #### gendev_https [Rust]
-Trying to get find the minimum amount of code that will fetch [my website's homepage](genbyte.dev).
+Trying to get find the minimum amount of code that will fetch [my website's homepage](nyble.dev).
 [rustls][rustls_repo] and [mio][mio_repo] are difficult separately so together... it's a struggle.
 This repository is a modification of the [TlsClient][rustls_tlsclient] example in the rustls repo.
 
 #### gendev_https_blocking [Rust]
 An example of using rustls with blocking std::TcpStream sockets. I thought this was impossible but
-[ctz][ctz] later found my [Twitter thread][rustls_twt_thread] where I struggled and called out
+[ctz][ctz] later found my ~~[Twitter thread][rustls_twt_thread]~~ where I struggled and called out
 for help in a desperate attempt to get it working. He fixed it up and sent a [PR][pr_1]. Thank you. 
 
 #### typeid [Rust]
@@ -23,15 +23,9 @@ Got it with 1 paramter but multiple without a tuple looks ahh. [This][bevy-syste
 bevy might do to help.
 
 #### lyingstatic [Rust]
-The source for [this tweet][lyingstatic-tweet]
+The source for ~~[this tweet][lyingstatic-tweet]~~ a cursed thing.
 
 [lyingstatic-tweet]: https://twitter.com/genuinebyte/status/1329947987448123397?s=20
-
-#### fonster [Rust]
-Trying to draw fonts without a layout engine (so I guess writing my own?) and struggling along
-the way. Code is messy, but bloody works! Twitter thread abotu this is [here][fonster-thread].
-
-[fonster-thread]: https://twitter.com/genuinebyte/status/1333960877989629957
 
 [ctz]: https://github.com/ctz
 [mio_repo]: https://github.com/carllerche/mio
